@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ozon Price Manager Pro</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root { --bg: #f4f6f8; --card: #fff; --primary: #005bff; --primary-hover: #0044cc; --success: #10b981; --warning: #f59e0b; --danger: #ef4444; --text: #1f2937; --text-light: #6b7280; --border: #e5e7eb; --input: #f9fafb; --header-bg: #f8fafc; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 20px; line-height: 1.5; }
+    .container { max-width: 1800px; margin: 0 auto; }
+    header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    h1 { font-size: 1.7rem; color: var(--primary); }
+    .nav-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+    .nav-tab { padding: 8px 16px; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; background: transparent; color: var(--text-light); transition: 0.2s; }
+    .nav-tab:hover { background: var(--input); }
+    .nav-tab.active { background: var(--primary); color: #fff; }
+    .card { background: var(--card); padding: 16px; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); margin-bottom: 16px; }
+    .btn { padding: 8px 14px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; color: #fff; transition: 0.2s; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 6px; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); } .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+    .btn-success { background: var(--success); } .btn-success:hover:not(:disabled) { background: #059669; }
+    .btn-warning { background: var(--warning); }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); } .btn-outline:hover { background: var(--input); }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; background: #fff; max-height: 75vh; }
+    table { width: 100%; border-collapse: collapse; min-width: 1400px; }
+    th { background: var(--header-bg); font-size: 0.7rem; text-transform: uppercase; color: var(--text-light); padding: 8px 10px; text-align: left; border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 2; white-space: nowrap; vertical-align: top; }
+    th .th-title { display: block; margin-bottom: 4px; font-weight: 600; }
+    th .th-search { display: block; }
+    th .th-search input { width: 100%; padding: 4px 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.8rem; background: #fff; }
+    th .th-search input:focus { border-color: var(--primary); outline: none; }
+    th .avg-badge { display: block; font-size: 0.75rem; font-weight: 700; color: var(--primary); margin-top: 3px; }
+    td { padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 0.88rem; vertical-align: middle; }
+    tr:hover { background: #f0f5ff; }
+    tr.hidden-row { display: none; }
+    .price-input { width: 100px; padding: 6px; border: 1px solid var(--border); border-radius: 6px; text-align: right; font-weight: 500; }
+    .price-input:focus { border-color: var(--primary); outline: none; }
+    .img-cell { width: 48px; height: 48px; border-radius: 6px; object-fit: cover; border: 1px solid var(--border); background: #eee; display: block; }
+    .log-box { background: #111; color: #d4d4d4; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 0.8rem; height: 140px; overflow-y: auto; margin-top: 12px; }
+    .log-info { color: #4ade80; } .log-warn { color: #fbbf24; } .log-error { color: #f87171; }
+    .progress { height: 4px; background: var(--border); border-radius: 4px; margin-top: 10px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--success); width: 0%; transition: width 0.3s; }
+    .loader { display: inline-block; width: 14px; height: 14px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 6px; display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .status { font-size: 0.85rem; margin-left: 10px; color: var(--text-light); }
+    .readonly { background: #f3f4f6; color: var(--text-light); cursor: default; border: 1px solid transparent; padding: 6px; border-radius: 4px; width: 100%; text-align: right; }
+    .checkbox-cell { width: 40px; text-align: center; }
+    input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+    .info-count { font-size: 0.8rem; color: var(--text-light); margin-bottom: 8px; }
+    .actions-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .stock-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+    .stock-high { background: #dcfce7; color: #166534; }
+    .stock-medium { background: #fef3c7; color: #92400e; }
+    .stock-low { background: #fee2e2; color: #991b1b; }
+    .stock-none { background: #f3f4f6; color: #6b7280; }
+    .turnover-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+    .turnover-green { background: #dcfce7; color: #166534; }
+    .turnover-yellow { background: #fef3c7; color: #92400e; }
+    .turnover-red { background: #fee2e2; color: #991b1b; }
+    .turnover-critical { background: #fecaca; color: #7f1d1d; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📦 Ozon Price Manager Pro</h1>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button class="btn btn-outline" onclick="app.showSettings()">⚙️ Настройки</button>
+      </div>
+    </header>
+
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="app.showPage('prices')">💰 Цены</button>
+      <button class="nav-tab" onclick="app.showPage('stocks')">📦 Остатки FBO</button>
+    </div>
+
+    <!-- PRICES PAGE -->
+    <div id="pricesPage" class="page active">
+      <div class="card">
+        <div class="actions-bar">
+          <button class="btn btn-primary" onclick="app.loadAll()">📥 Загрузить</button>
+          <button class="btn btn-success" onclick="app.updatePrices()">📤 Отправить (выбранные)</button>
+          <button class="btn btn-warning" onclick="app.exportExcel()">📊 Excel</button>
+          <span class="loader" id="loader"></span>
+          <span id="statusTxt" class="status">Готов к работе</span>
+        </div>
+        <div class="progress"><div class="progress-fill" id="progFill"></div></div>
+      </div>
+
+      <div class="card" style="padding: 0; overflow: hidden">
+        <div class="info-count" id="infoCount"></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="checkbox-cell"><input type="checkbox" id="selectAll" onclick="app.toggleAll(this)"></th>
+                <th style="width:55px"><span class="th-title">Фото</span></th>
+                <th>
+                  <span class="th-title">Название</span>
+                  <span class="th-search"><input type="text" id="searchName" placeholder="Поиск..." oninput="app.filterTable()"></span>
+                </th>
+                <th>
+                  <span class="th-title">Артикул</span>
+                  <span class="th-search"><input type="text" id="searchOffer" placeholder="Поиск..." oninput="app.filterTable()"></span>
+                </th>
+                <th>
+                  <span class="th-title">Цена клиента</span>
+                  <span class="avg-badge" id="avg_price"></span>
+                </th>
+                <th>
+                  <span class="th-title">Зачеркнутая</span>
+                  <span class="avg-badge" id="avg_old_price"></span>
+                </th>
+                <th>
+                  <span class="th-title">Мин. цена</span>
+                  <span class="avg-badge" id="avg_min_price"></span>
+                </th>
+                <th>
+                  <span class="th-title">Цена с акциями</span>
+                  <span class="avg-badge" id="avg_marketing_seller_price"></span>
+                </th>
+                <th>
+                  <span class="th-title">Цена Озон Карте</span>
+                  <span class="avg-badge" id="avg_customer_price"></span>
+                </th>
+                <th>
+                  <span class="th-title">% скидки Ozon</span>
+                  <span class="avg-badge" id="avg_discount_percent"></span>
+                </th>
+                <th>
+                  <span class="th-title">Себестоимость</span>
+                  <span class="avg-badge" id="avg_net_price"></span>
+                </th>
+                <th>
+                  <span class="th-title">Остатки FBO</span>
+                  <span class="avg-badge" id="avg_fbo_stock"></span>
+                </th>
+                <th>
+                  <span class="th-title">Оборачиваемость</span>
+                  <span class="avg-badge" id="avg_turnover"></span>
+                </th>
+                <th><span class="th-title">Эквайринг</span></th>
+                <th><span class="th-title">Комиссия (%)</span></th>
+              </tr>
+            </thead>
+            <tbody id="tbody">
+              <tr><td colspan="15" style="text-align:center; padding: 20px">Нажмите «Загрузить»</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="log-box" id="logBox"><div class="log-info">[System] Ожидание...</div></div>
+    </div>
+
+    <!-- STOCKS PAGE -->
+    <div id="stocksPage" class="page">
+      <div class="card">
+        <div class="actions-bar">
+          <button class="btn btn-primary" onclick="app.loadStocks()">📦 Загрузить остатки</button>
+          <span class="loader" id="stockLoader"></span>
+          <span id="stockStatusTxt" class="status">Готов к загрузке</span>
+        </div>
+        <div class="progress"><div class="progress-fill" id="stockProgFill"></div></div>
+      </div>
+
+      <div class="card" style="padding: 0; overflow: hidden">
+        <div class="info-count" id="stockInfoCount"></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:55px">Фото</th>
+                <th>Название</th>
+                <th>Артикул</th>
+                <th>Склад</th>
+                <th>Доступно к продаже</th>
+                <th>Готовим к продаже</th>
+                <th>В поставках</th>
+                <th>Общий остаток</th>
+                <th>Ликвидность</th>
+                <th>Оборачиваемость (дни)</th>
+                <th>Уровень остатка</th>
+              </tr>
+            </thead>
+            <tbody id="stockTbody">
+              <tr><td colspan="11" style="text-align:center; padding: 20px">Нажмите «Загрузить остатки»</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="log-box" id="stockLogBox"><div class="log-info">[Stocks] Ожидание...</div></div>
+    </div>
+
+    <!-- SETTINGS PAGE -->
+    <div id="settingsPage" class="page">
+      <div class="card">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+          <a style="color: var(--primary); text-decoration: none; font-weight: 500; cursor: pointer;" onclick="app.showPage('prices')">← Назад</a>
+          <h2>⚙️ Настройки подключения</h2>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;">
+          <div><label style="display:block;font-size:0.8rem;color:var(--text-light);margin-bottom:4px">Client-ID</label><input type="text" id="cid" placeholder="Ваш Client-Id" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px"></div>
+          <div><label style="display:block;font-size:0.8rem;color:var(--text-light);margin-bottom:4px">API-Key</label><input type="password" id="akey" placeholder="Ваш API-Key" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px"></div>
+          <div><label style="display:block;font-size:0.8rem;color:var(--text-light);margin-bottom:4px">Proxy URL (опционально)</label><input type="text" id="proxy" placeholder="https://cors-anywhere.herokuapp.com/" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px"></div>
+        </div>
+        <button class="btn btn-primary" style="margin-top: 12px" onclick="app.saveCreds()">💾 Сохранить настройки</button>
+        <span id="credStatus" class="status"></span>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:12px; font-size:1rem;">ℹ️ Информация</h3>
+        <div class="badge" style="margin-bottom:12px; background: #fee2e2; color: #b91c1c; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 500;">⚠️ Для работы из браузера требуется CORS-расширение или локальный прокси</div>
+        <ul style="padding-left: 20px; color: var(--text-light); font-size: 0.9rem; line-height: 1.8;">
+          <li>Установите расширение <b>CORS Unblock</b> для Chrome/Firefox, если не используете прокси.</li>
+          <li>API Ozon ограничивает обновление цен до <b>10 раз в час</b> на товар.</li>
+          <li>Данные цен по Озон Карте доступны только с подпиской <b>Premium Pro</b>.</li>
+          <li>Ключи сохраняются в <code>localStorage</code> браузера (только для локального использования).</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+<script>
+const app = {
+  state: { products: [], stocks: [], loading: false, limit: 1000, visibleCount: 0, currentPage: 'prices' },
+  
+  init() {
+    ['cid','akey','proxy'].forEach(k => {
+      const v = localStorage.getItem('ozon_'+k);
+      if(v) document.getElementById(k).value = v;
+    });
+  },
+
+  showPage(page) {
+    this.state.currentPage = page;
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    
+    if(page === 'prices') {
+      document.getElementById('pricesPage').classList.add('active');
+      document.querySelectorAll('.nav-tab')[0].classList.add('active');
+    } else if(page === 'stocks') {
+      document.getElementById('stocksPage').classList.add('active');
+      document.querySelectorAll('.nav-tab')[1].classList.add('active');
+    } else if(page === 'settings') {
+      document.getElementById('settingsPage').classList.add('active');
+    }
+  },
+
+  showSettings() {
+    this.showPage('settings');
+  },
+
+  saveCreds() {
+    ['cid','akey','proxy'].forEach(k => localStorage.setItem('ozon_'+k, document.getElementById(k).value.trim()));
+    const s = document.getElementById('credStatus');
+    s.textContent = '✅ Сохранено'; s.style.color = 'var(--success)';
+    this.log('🔑 Ключи сохранены в localStorage', 'info');
+    setTimeout(() => { s.textContent = ''; }, 2000);
+  },
+
+  log(msg, type='info', stock=false) {
+    const boxId = stock ? 'stockLogBox' : 'logBox';
+    const box = document.getElementById(boxId);
+    const div = document.createElement('div');
+    div.className = `log-${type}`;
+    div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+  },
+
+  async req(endpoint, body, stock=false) {
+    const proxy = document.getElementById('proxy').value.replace(/\/+$/, '');
+    const url = `${proxy ? proxy+'/' : ''}https://api-seller.ozon.ru${endpoint}`;
+    const headers = { 
+      'Client-Id': document.getElementById('cid').value.trim(), 
+      'Api-Key': document.getElementById('akey').value.trim(), 
+      'Content-Type': 'application/json' 
+    };
+    const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+    if (!res.ok) {
+      let errText = ''; try { errText = await res.text(); } catch(e){}
+      throw new Error(`HTTP ${res.status} ${res.statusText}: ${errText || 'Пустой ответ'}`);
+    }
+    return res.json();
+  },
+
+  setProgress(p, stock=false) { 
+    const fillId = stock ? 'stockProgFill' : 'progFill';
+    document.getElementById(fillId).style.width = p + '%'; 
+  },
+
+  async delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  },
+
+  async loadAll() {
+    if (this.state.loading) return;
+    this.state.loading = true;
+    document.getElementById('loader').style.display = 'inline-block';
+    this.setProgress(0);
+    this.state.products = [];
+    this.log('🚀 Начало загрузки...', 'info');
+
+    const cid = document.getElementById('cid').value.trim();
+    if(!cid) { this.log('❌ Укажите Client-Id в настройках', 'error'); return this.reset(); }
+
+    try {
+      // 1. Список товаров
+      const listItems = [];
+      let last = "", page = 0;
+      this.log('📦 Шаг 1/5: Список товаров...', 'info');
+      while(true) {
+        const d = await this.req('/v3/product/list', { filter: { visibility: "ALL" }, last_id: last, limit: this.state.limit });
+        const items = d.result?.items || [];
+        listItems.push(...items);
+        last = d.result?.last_id || "";
+        page++;
+        this.log(`📄 Стр ${page}: ${items.length} товаров`, 'info');
+        if (!last || items.length < this.state.limit || page > 25) break;
+      }
+      if(!listItems.length) throw new Error('Товары не найдены');
+      this.setProgress(10);
+
+      const pIds = listItems.map(i => String(i.product_id));
+      const baseMap = new Map();
+      listItems.forEach(i => baseMap.set(String(i.product_id), { product_id: i.product_id, offer_id: i.offer_id || '', fbo_stock: 0, turnover: 0 }));
+
+      const fetchChunked = async (endpoint, payload, responseParser) => {
+        for(let i=0; i<pIds.length; i+=this.state.limit) {
+          const chunk = pIds.slice(i, i+this.state.limit);
+          const body = typeof payload === 'function' ? payload(chunk) : {...payload, product_id: chunk, limit: chunk.length};
+          const res = await this.req(endpoint, body);
+          const data = res.result || res.items || [];
+          data.forEach(item => {
+            const id = String(item.product_id || item.id || 0);
+            const target = baseMap.get(id) || baseMap.set(id, {product_id: id, offer_id: '', fbo_stock: 0, turnover: 0}).get(id);
+            responseParser(target, item);
+          });
+        }
+      };
+
+      // 2. Цены
+      this.log('💰 Шаг 2/5: Цены, эквайринг, комиссии...', 'info');
+      await fetchChunked(
+        '/v5/product/info/prices', 
+        (chunk) => ({ cursor: "", filter: { product_id: chunk, visibility: "ALL" }, limit: chunk.length }),
+        (target, item) => {
+          const pr = item.price || {};
+          const comm = item.commissions || {};
+          target.price = parseFloat(pr.price) || 0;
+          target.old_price = parseFloat(pr.old_price) || 0;
+          target.min_price = parseFloat(pr.min_price) || 0;
+          target.net_price = parseFloat(pr.net_price) || 0;
+          target.marketing_seller_price = parseFloat(pr.marketing_seller_price) || 0;
+          target.vat = pr.vat || 0.2;
+          target.currency_code = pr.currency_code || 'RUB';
+          target.acquiring = item.acquiring || 0;
+          target.commission_percent = comm.sales_percent_fbo || comm.sales_percent_fbs || comm.sales_percent_rfbs || 0;
+        }
+      );
+      this.setProgress(25);
+
+      // 3. Названия, фото, SKU
+      this.log('🏷️ Шаг 3/5: Названия, фото, SKU...', 'info');
+      let skuCount = 0;
+      await fetchChunked(
+        '/v4/product/info/attributes',
+        (chunk) => ({ filter: { product_id: chunk, visibility: "ALL" }, limit: chunk.length, sort_dir: "asc" }),
+        (target, item) => {
+          target.name = item.name || 'Без названия';
+          target.primary_photo = item.primary_image || item.images?.[0] || '';
+          const skuVal = item.sku || item.sku_list?.[0] || '';
+          if(skuVal) { target.sku = String(skuVal); skuCount++; }
+        }
+      );
+      if(skuCount === 0) this.log('⚠️ SKU не найдены в характеристиках', 'warn');
+      this.setProgress(45);
+
+      // 4. Цены по Озон Карте
+      this.log('🔍 Шаг 4/5: Цены по Озон Карте...', 'info');
+      try {
+        const skus = Array.from(baseMap.values()).map(p => String(p.sku)).filter(s => s);
+        if(skus.length > 0) {
+          for(let i=0; i<skus.length; i+=this.state.limit) {
+            const chunk = skus.slice(i, i+this.state.limit);
+            const res = await this.req('/v1/product/prices/details', { skus: chunk });
+            const details = res.prices || [];
+            details.forEach(d => {
+              const target = Array.from(baseMap.values()).find(p => String(p.sku) === String(d.sku));
+              if(target) {
+                target.customer_price = parseFloat(d.customer_price?.amount) || 0;
+                target.discount_percent = d.discount_percent || 0;
+              }
+            });
+          }
+        } else {
+          this.log('⚠️ SKU не найдены, шаг 4 пропущен', 'warn');
+        }
+      } catch (e) {
+        this.log(`⚠️ Ошибка цен по карте (нет Premium Pro?): ${e.message}`, 'warn');
+      }
+      this.setProgress(65);
+
+      // 5. Остатки FBO и оборачиваемость
+      this.log('📦 Шаг 5/5: Остатки FBO и оборачиваемость...', 'info');
+      try {
+        const skus = Array.from(baseMap.values()).map(p => String(p.sku)).filter(s => s);
+        if(skus.length > 0) {
+          // Загружаем остатки (лимит 100 SKU на запрос)
+          const stockMap = new Map();
+          for(let i=0; i<skus.length; i+=100) {
+            const chunk = skus.slice(i, i+100);
+            this.log(`📦 Загрузка остатков ${i}/${skus.length}...`, 'info');
+            const res = await this.req('/v1/analytics/stocks', { skus: chunk });
+            (res.items || []).forEach(item => {
+              const skuKey = String(item.sku);
+              if(!stockMap.has(skuKey)) stockMap.set(skuKey, []);
+              stockMap.get(skuKey).push(item);
+            });
+            this.setProgress(65 + ((i/skus.length) * 15));
+            // Важная задержка для обхода Rate Limit 429 и 500
+            await this.delay(300);
+          }
+          
+          // Загружаем оборачиваемость
+          const turnoverMap = new Map();
+          for(let i=0; i<skus.length; i+=1000) {
+            const chunk = skus.slice(i, i+1000);
+            this.log(`📊 Загрузка оборачиваемости ${i}/${skus.length}...`, 'info');
+            const res = await this.req('/v1/analytics/turnover/stocks', { sku: chunk, limit: 1000 });
+            (res.items || []).forEach(item => {
+              turnoverMap.set(String(item.sku), item);
+            });
+            this.setProgress(80 + ((i/skus.length) * 10));
+            // Важная задержка
+            await this.delay(300);
+          }
+
+          // Применяем данные к товарам
+          baseMap.forEach(target => {
+            const skuKey = String(target.sku);
+            const stocks = stockMap.get(skuKey) || [];
+            target.fbo_stock = stocks.reduce((sum, s) => sum + (s.available_stock_count || 0), 0);
+            
+            const turnover = turnoverMap.get(skuKey);
+            target.turnover = turnover ? Math.round(turnover.turnover || 0) : 0;
+            target.turnover_grade = turnover ? turnover.turnover_grade || '' : '';
+          });
+        } else {
+          this.log('⚠️ SKU не найдены, остатки не загружены', 'warn');
+        }
+      } catch (e) {
+        this.log(`⚠️ Ошибка загрузки остатков: ${e.message}`, 'warn');
+      }
+      this.setProgress(90);
+
+      this.state.products = Array.from(baseMap.values());
+      this.render();
+      this.log(`✅ Загрузка завершена: ${this.state.products.length} товаров`, 'info');
+      document.getElementById('statusTxt').textContent = `Загружено: ${this.state.products.length}`;
+    } catch (e) {
+      this.log(`❌ Ошибка: ${e.message}`, 'error');
+    } finally {
+      this.reset();
+    }
+  },
+
+  async loadStocks() {
+    if (this.state.loading) return;
+    this.state.loading = true;
+    document.getElementById('stockLoader').style.display = 'inline-block';
+    this.setProgress(0, true);
+    this.log('📦 Загрузка остатков...', 'info', true);
+
+    const cid = document.getElementById('cid').value.trim();
+    if(!cid) { this.log('❌ Укажите Client-Id в настройках', 'error', true); return; }
+
+    try {
+      // Если товары уже загружены, используем их SKU
+      let skus = [];
+      if(this.state.products.length > 0) {
+        skus = this.state.products.map(p => String(p.sku)).filter(s => s);
+      } else {
+        // Загружаем список товаров для получения SKU
+        this.log('📦 Шаг 1/2: Получаем список товаров...', 'info', true);
+        const listItems = [];
+        let last = "", page = 0;
+        while(true) {
+          const d = await this.req('/v3/product/list', { filter: { visibility: "ALL" }, last_id: last, limit: this.state.limit });
+          const items = d.result?.items || [];
+          listItems.push(...items);
+          last = d.result?.last_id || "";
+          page++;
+          if (!last || items.length < this.state.limit || page > 25) break;
+        }
+        // Загружаем характеристики для получения SKU
+        this.log('📦 Шаг 2/2: Получаем SKU...', 'info', true);
+        const pIds = listItems.map(i => String(i.product_id));
+        const skuMap = new Map();
+        for(let i=0; i<pIds.length; i+=this.state.limit) {
+          const chunk = pIds.slice(i, i+this.state.limit);
+          const res = await this.req('/v4/product/info/attributes', { filter: { product_id: chunk, visibility: "ALL" }, limit: chunk.length });
+          (res.result || []).forEach(item => {
+            if(item.sku) skuMap.set(String(item.product_id), String(item.sku));
+          });
+          await this.delay(100);
+        }
+        skus = Array.from(skuMap.values());
+      }
+
+      if(skus.length === 0) {
+        this.log('⚠️ SKU не найдены, загрузка остатков невозможна', 'warn', true);
+        this.reset();
+        return;
+      }
+      
+      this.log(`📦 Загрузка остатков для ${skus.length} товаров...`, 'info', true);
+      this.state.stocks = [];
+      
+      // Загружаем остатки (лимит 100 SKU на запрос)
+      for(let i=0; i<skus.length; i+=100) {
+        const chunk = skus.slice(i, i+100);
+        this.log(`📦 Загрузка остатков ${i}/${skus.length}...`, 'info', true);
+        try {
+          const res = await this.req('/v1/analytics/stocks', { skus: chunk });
+          const items = res.items || [];
+          this.state.stocks.push(...items);
+        } catch (err) {
+          this.log(`⚠️ Ошибка при загрузке чанка остатков ${i}: ${err.message}`, 'warn', true);
+        }
+        this.setProgress(((i / skus.length) * 50), true);
+        // Задержка для обхода Rate Limit
+        await this.delay(300);
+      }
+
+      // Загружаем оборачиваемость
+      this.log('📊 Загрузка оборачиваемости...', 'info', true);
+      const turnoverMap = new Map();
+      for(let i=0; i<skus.length; i+=1000) {
+        const chunk = skus.slice(i, i+1000);
+        try {
+          const res = await this.req('/v1/analytics/turnover/stocks', { sku: chunk, limit: 1000 });
+          (res.items || []).forEach(item => {
+            turnoverMap.set(String(item.sku), item);
+          });
+        } catch (err) {
+          this.log(`⚠️ Ошибка при загрузке чанка оборачиваемости ${i}: ${err.message}`, 'warn', true);
+        }
+        this.setProgress(50 + ((i / skus.length) * 50), true);
+        // Задержка для обхода Rate Limit
+        await this.delay(300);
+      }
+
+      // Применяем оборачиваемость к остаткам
+      this.state.stocks.forEach(stock => {
+        const turnover = turnoverMap.get(String(stock.sku));
+        if(turnover) {
+          stock.turnover = turnover.turnover || 0;
+          stock.turnover_grade = turnover.turnover_grade || '';
+          stock.idc = turnover.idc || 0;
+          stock.idc_grade = turnover.idc_grade || '';
+        }
+      });
+
+      this.renderStocks();
+      this.log(`✅ Загружено: ${this.state.stocks.length} записей остатков`, 'info', true);
+      document.getElementById('stockStatusTxt').textContent = `Загружено: ${this.state.stocks.length} записей`;
+      this.setProgress(100, true);
+    } catch (e) {
+      this.log(`❌ Ошибка загрузки остатков: ${e.message}`, 'error', true);
+    } finally {
+      this.state.loading = false;
+      document.getElementById('stockLoader').style.display = 'none';
+    }
+  },
+
+  reset() {
+    this.state.loading = false;
+    document.getElementById('loader').style.display = 'none';
+    setTimeout(() => { this.setProgress(100); setTimeout(() => this.setProgress(0), 500); }, 300);
+  },
+
+  toggleAll(source) {
+    document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = source.checked);
+  },
+
+  filterTable() {
+    const nameQ = document.getElementById('searchName').value.trim().toLowerCase();
+    const offerQ = document.getElementById('searchOffer').value.trim().toLowerCase();
+    const rows = document.querySelectorAll('#tbody tr');
+    let visible = 0;
+    
+    rows.forEach(row => {
+      const name = row.dataset.name || '';
+      const offer = row.dataset.offer || '';
+      const matchName = !nameQ || name.includes(nameQ);
+      const matchOffer = !offerQ || offer.includes(offerQ);
+      if(matchName && matchOffer) {
+        row.classList.remove('hidden-row');
+        visible++;
+      } else {
+        row.classList.add('hidden-row');
+      }
+    });
+    this.state.visibleCount = visible;
+    this.updateInfoCount();
+    this.calcAverages();
+  },
+
+  updateInfoCount() {
+    const total = this.state.products.length;
+    const visible = this.state.visibleCount;
+    const el = document.getElementById('infoCount');
+    el.textContent = visible < total ? `Показано: ${visible} из ${total}` : `Всего: ${total} товаров`;
+  },
+
+  calcAverages() {
+    const fields = ['price', 'old_price', 'min_price', 'marketing_seller_price', 'customer_price', 'discount_percent', 'net_price', 'fbo_stock', 'turnover'];
+    fields.forEach(f => {
+      const vals = this.state.products.map(p => p[f]).filter(v => v !== undefined && v !== null && v !== 0);
+      const avg = vals.length > 0 ? vals.reduce((a,b) => a+b, 0) / vals.length : 0;
+      const el = document.getElementById('avg_' + f);
+      if(el) {
+        if(f === 'discount_percent') el.textContent = avg > 0 ? `⌀ ${avg.toFixed(1)}%` : '';
+        else if(f === 'turnover') el.textContent = avg > 0 ? `⌀ ${avg.toFixed(0)} дн` : '';
+        else el.textContent = avg > 0 ? `⌀ ${avg.toFixed(0)}₽` : '';
+      }
+    });
+  },
+
+  getStockBadgeClass(stock) {
+    if(stock >= 100) return 'stock-high';
+    if(stock >= 20) return 'stock-medium';
+    if(stock > 0) return 'stock-low';
+    return 'stock-none';
+  },
+
+  getTurnoverBadgeClass(grade) {
+    switch(grade) {
+      case 'GRADES_GREEN': return 'turnover-green';
+      case 'GRADES_YELLOW': return 'turnover-yellow';
+      case 'GRADES_RED': return 'turnover-red';
+      case 'GRADES_CRITICAL': return 'turnover-critical';
+      default: return '';
+    }
+  },
+
+  getTurnoverText(grade) {
+    switch(grade) {
+      case 'GRADES_GREEN': return 'Хороший';
+      case 'GRADES_YELLOW': return 'Средний';
+      case 'GRADES_RED': return 'Плохой';
+      case 'GRADES_CRITICAL': return 'Критический';
+      case 'GRADES_NONE': return 'Ожидание';
+      case 'GRADES_NOSALES': return 'Нет продаж';
+      default: return grade || '-';
+    }
+  },
+
+  render() {
+    const tb = document.getElementById('tbody');
+    tb.innerHTML = '';
+    if(!this.state.products.length) return;
+    
+    const frag = document.createDocumentFragment();
+    this.state.products.forEach((p, i) => {
+      const tr = document.createElement('tr');
+      tr.dataset.name = (p.name || '').toLowerCase();
+      tr.dataset.offer = (p.offer_id || '').toLowerCase();
+      const imgSrc = p.primary_photo || 'image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjY2NjIiBzdHJva2Utd2lkdGg9IjIiPjxyZWN0IHg9IjMiIHk9IjMiIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgcng9IjIiIHJ5PSIyIi8+PGNpcmNsZSBjeD0iOSIgY3k9IjkiIHI9IjIiLz48cGF0aCBkPSJtMjEgMTUtMy4wODYtMy4wOTJhMiAyIDAgMCAwLTIuODI4IDBMMTEgMTgiLz48L3N2Zz4=';
+      
+      tr.innerHTML = `
+        <td class="checkbox-cell"><input type="checkbox" class="row-checkbox" data-idx="${i}"></td>
+        <td><img src="${imgSrc}" alt="" class="img-cell" loading="lazy" onerror="this.src='image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjY2NjIiBzdHJva2Utd2lkdGg9IjIiPjxyZWN0IHg9IjMiIHk9IjMiIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgcng9IjIiIHJ5PSIyIi8+PGNpcmNsZSBjeD0iOSIgY3k9IjkiIHI9IjIiLz48cGF0aCBkPSJtMjEgMTUtMy4wODYtMy4wOTJhMiAyIDAgMCAwLTIuODI4IDBMMTEgMTgiLz48L3N2Zz4='"></td>
+        <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${p.name}">${p.name}</td>
+        <td>${p.offer_id}</td>
+        <td><input type="number" step="0.01" class="price-input" value="${p.price}" data-i="${i}" data-f="price"></td>
+        <td><input type="number" step="0.01" class="price-input" value="${p.old_price}" data-i="${i}" data-f="old_price"></td>
+        <td><input type="number" step="0.01" class="price-input" value="${p.min_price}" data-i="${i}" data-f="min_price"></td>
+        <td><input type="number" step="0.01" class="price-input" value="${p.marketing_seller_price}" data-i="${i}" data-f="marketing_seller_price"></td>
+        <td class="readonly">${p.customer_price || '-'}</td>
+        <td class="readonly">${p.discount_percent ? p.discount_percent + '%' : '-'}</td>
+        <td><input type="number" step="0.01" class="price-input" value="${p.net_price}" data-i="${i}" data-f="net_price"></td>
+        <td><span class="stock-badge ${this.getStockBadgeClass(p.fbo_stock)}">${p.fbo_stock || 0} шт</span></td>
+        <td><span class="turnover-badge ${this.getTurnoverBadgeClass(p.turnover_grade)}">${p.turnover ? p.turnover + ' дн' : '-'}</span></td>
+        <td class="readonly">${p.acquiring}</td>
+        <td class="readonly">${p.commission_percent}%</td>
+      `;
+      frag.appendChild(tr);
+    });
+    tb.appendChild(frag);
+
+    this.state.visibleCount = this.state.products.length;
+    this.updateInfoCount();
+    this.calcAverages();
+
+    tb.querySelectorAll('input[data-f]').forEach(inp => {
+      inp.addEventListener('input', e => {
+        const idx = e.target.dataset.i;
+        const field = e.target.dataset.f;
+        this.state.products[idx][field] = parseFloat(e.target.value) || 0;
+        this.calcAverages();
+      });
+    });
+  },
+
+  renderStocks() {
+    const tb = document.getElementById('stockTbody');
+    tb.innerHTML = '';
+    if(!this.state.stocks.length) return;
+    
+    const frag = document.createDocumentFragment();
+    this.state.stocks.forEach((stock, i) => {
+      const tr = document.createElement('tr');
+      const imgSrc = 'image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjY2NjIiBzdHJva2Utd2lkdGg9IjIiPjxyZWN0IHg9IjMiIHk9IjMiIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgcng9IjIiIHJ5PSIyIi8+PGNpcmNsZSBjeD0iOSIgY3k9IjkiIHI9IjIiLz48cGF0aCBkPSJtMjEgMTUtMy4wODYtMy4wOTJhMiAyIDAgMCAwLTIuODI4IDBMMTEgMTgiLz48L3N2Zz4=';
+      
+      const totalStock = (stock.available_stock_count || 0) + (stock.valid_stock_count || 0) + (stock.transit_stock_count || 0);
+      const turnoverText = stock.turnover ? `${stock.turnover} дн` : '-';
+      const turnoverBadge = stock.turnover_grade ? this.getTurnoverBadgeClass(stock.turnover_grade) : '';
+      
+      tr.innerHTML = `
+        <td><img src="${imgSrc}" alt="" class="img-cell"></td>
+        <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${stock.name}">${stock.name}</td>
+        <td>${stock.offer_id}</td>
+        <td>${stock.warehouse_name || stock.cluster_name || '-'}</td>
+        <td><strong>${stock.available_stock_count || 0}</strong></td>
+        <td>${stock.valid_stock_count || 0}</td>
+        <td>${stock.transit_stock_count || 0}</td>
+        <td><span class="stock-badge ${this.getStockBadgeClass(totalStock)}">${totalStock} шт</span></td>
+        <td>${stock.turnover_grade ? this.getTurnoverText(stock.turnover_grade) : '-'}</td>
+        <td>${turnoverText}</td>
+        <td><span class="turnover-badge ${turnoverBadge}">${stock.turnover_grade ? this.getTurnoverText(stock.turnover_grade) : '-'}</span></td>
+      `;
+      frag.appendChild(tr);
+    });
+    tb.appendChild(frag);
+    
+    document.getElementById('stockInfoCount').textContent = `Всего: ${this.state.stocks.length} записей остатков`;
+  },
+
+  async updatePrices() {
+    if(!this.state.products.length) return this.log('⚠️ Сначала загрузите товары', 'warn');
+    if(this.state.loading) return;
+    
+    const selectedIndices = [];
+    document.querySelectorAll('.row-checkbox:checked').forEach(cb => {
+      selectedIndices.push(parseInt(cb.dataset.idx));
+    });
+
+    if(selectedIndices.length === 0) {
+      this.log('⚠️ Выберите товары чекбоксами для обновления', 'warn');
+      return;
+    }
+
+    this.state.loading = true;
+    document.getElementById('loader').style.display = 'inline-block';
+    this.log(`📤 Отправка цен для ${selectedIndices.length} товаров...`, 'info');
+    
+    try {
+      const selectedProducts = selectedIndices.map(i => this.state.products[i]);
+      const payload = { prices: selectedProducts.map(p => ({
+        product_id: p.product_id,
+        offer_id: p.offer_id,
+        price: String(p.price),
+        old_price: String(p.old_price),
+        min_price: String(p.min_price),
+        net_price: String(p.net_price),
+        marketing_seller_price: String(p.marketing_seller_price),
+        vat: String(p.vat || 0.2),
+        currency_code: p.currency_code || 'RUB'
+      }))};
+
+      let ok = 0;
+      for(let i=0; i<payload.prices.length; i+=this.state.limit) {
+        const chunk = { prices: payload.prices.slice(i, i+this.state.limit) };
+        const res = await this.req('/v1/product/import/prices', chunk);
+        ok += (res.result || []).filter(x => x.updated).length;
+      }
+      this.log(`✅ Обновлено: ${ok} товаров`, 'info');
+      document.getElementById('statusTxt').textContent = `Отправлено: ${ok}`;
+      document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+      document.getElementById('selectAll').checked = false;
+    } catch(e) {
+      this.log(`❌ Ошибка: ${e.message}`, 'error');
+    } finally {
+      this.state.loading = false;
+      document.getElementById('loader').style.display = 'none';
+    }
+  },
+
+  exportExcel() {
+    if(!this.state.products.length) return;
+    const data = this.state.products.map(p => ({
+      'Название': p.name,
+      'Артикул': p.offer_id,
+      'Цена для клиента': p.price,
+      'Зачеркнутая цена': p.old_price,
+      'Мин. цена': p.min_price,
+      'Цена с акциями': p.marketing_seller_price,
+      'Цена Озон Карте': p.customer_price,
+      '% скидки Ozon': p.discount_percent,
+      'Себестоимость': p.net_price,
+      'Остатки FBO': p.fbo_stock,
+      'Оборачиваемость': p.turnover,
+      'Эквайринг': p.acquiring,
+      'Комиссия (%)': p.commission_percent,
+      'НДС': p.vat,
+      'Валюта': p.currency_code
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Ozon_Prices');
+    XLSX.writeFile(wb, `Ozon_Prices_${new Date().toISOString().slice(0,10)}.xlsx`);
+    this.log('📄 Excel сохранён', 'info');
+  }
+};
+window.onload = () => app.init();
+</script>
+</body>
+</html>
+
